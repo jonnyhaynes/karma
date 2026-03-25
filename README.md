@@ -1,5 +1,4 @@
 # KARMA
-## strava-komoot-sync
 
 A one-time CLI tool that syncs all your Strava activities to Komoot. Handles deduplication at two layers — a local state file and Komoot's native duplicate detection — so no activity ever appears twice.
 
