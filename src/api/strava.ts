@@ -1,5 +1,6 @@
 // src/api/strava.ts
 import axios, { AxiosResponseHeaders, RawAxiosResponseHeaders } from "axios";
+import { sleep } from "../utils/sleep";
 
 const BASE_URL = "https://www.strava.com/api/v3";
 
@@ -27,7 +28,7 @@ export async function fetchAllActivities(accessToken: string): Promise<StravaAct
       params: { per_page: 200, page },
     });
 
-    checkRateLimit(response.headers);
+    await checkRateLimit(response.headers);
 
     if (response.data.length === 0) break;
     activities.push(...response.data);
@@ -41,23 +42,30 @@ export async function fetchStreams(
   accessToken: string,
   activityId: number
 ): Promise<StravaStreams | null> {
-  const response = await axios.get<StravaStreams>(
-    `${BASE_URL}/activities/${activityId}/streams`,
-    {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      params: { keys: "latlng,altitude,time", key_by_type: true },
+  try {
+    const response = await axios.get<StravaStreams>(
+      `${BASE_URL}/activities/${activityId}/streams`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        params: { keys: "latlng,altitude,time", key_by_type: true },
+      }
+    );
+
+    await checkRateLimit(response.headers);
+
+    if (!response.data.latlng) return null;
+    return response.data;
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 404) {
+      return null; // activity has no stream data
     }
-  );
-
-  checkRateLimit(response.headers);
-
-  if (!response.data.latlng) return null;
-  return response.data;
+    throw err; // re-throw unexpected errors
+  }
 }
 
-function checkRateLimit(headers: AxiosResponseHeaders | RawAxiosResponseHeaders): void {
-  const limit = headers["x-ratelimit-limit"];
-  const usage = headers["x-ratelimit-usage"];
+async function checkRateLimit(headers: AxiosResponseHeaders | RawAxiosResponseHeaders): Promise<void> {
+  const limit = headers["x-ratelimit-limit"] as string | undefined;
+  const usage = headers["x-ratelimit-usage"] as string | undefined;
   if (!limit || !usage) return;
 
   const [, limitPerInterval] = limit.split(",").map(Number);
@@ -65,5 +73,6 @@ function checkRateLimit(headers: AxiosResponseHeaders | RawAxiosResponseHeaders)
 
   if (limitPerInterval - usedInInterval <= 10) {
     console.warn(`⚠️  Strava rate limit close (${usedInInterval}/${limitPerInterval}). Pausing 60s...`);
+    await sleep(60_000);
   }
 }
