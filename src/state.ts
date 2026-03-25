@@ -1,5 +1,7 @@
 // src/state.ts
 import fs from "fs";
+import os from "os";
+import path from "path";
 
 export interface ActivityRecord {
   status: "synced" | "duplicate" | "no_gps" | "failed";
@@ -17,10 +19,16 @@ export function loadState(filePath: string): SyncState {
     return { syncedAt: "", activities: {} };
   }
   const raw = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(raw) as SyncState;
+  try {
+    return JSON.parse(raw) as SyncState;
+  } catch {
+    throw new Error(`State file at ${filePath} is corrupt or invalid JSON. Delete it and re-run.`);
+  }
 }
 
 export function saveState(filePath: string, state: SyncState): void {
   state.syncedAt = new Date().toISOString();
-  fs.writeFileSync(filePath, JSON.stringify(state, null, 2), "utf-8");
+  const tmp = path.join(os.tmpdir(), `synced-${Date.now()}.json.tmp`);
+  fs.writeFileSync(tmp, JSON.stringify(state, null, 2), "utf-8");
+  fs.renameSync(tmp, filePath);
 }
