@@ -1,7 +1,8 @@
 // src/sync.ts
-import path from "path";
 import dotenv from "dotenv";
 dotenv.config();
+
+import path from "path";
 
 import { getStravaToken } from "./auth/strava";
 import { getKomootToken } from "./auth/komoot";
