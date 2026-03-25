@@ -6,8 +6,6 @@ import open from "open";
 import fs from "fs";
 import path from "path";
 
-const CLIENT_ID = process.env.STRAVA_CLIENT_ID!;
-const CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET!;
 const REDIRECT_URI = "http://localhost:3000/callback";
 const TOKEN_URL = "https://www.strava.com/oauth/token";
 const AUTH_URL = "https://www.strava.com/oauth/authorize";
@@ -33,6 +31,11 @@ export async function getStravaToken(): Promise<string> {
 }
 
 async function refreshStravaToken(refreshToken: string): Promise<string> {
+  const CLIENT_ID = process.env.STRAVA_CLIENT_ID;
+  const CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    throw new Error("STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET must be set in .env");
+  }
   console.log("🔄 Refreshing Strava token...");
   const res = await axios.post(TOKEN_URL, {
     client_id: CLIENT_ID,
@@ -51,6 +54,11 @@ async function refreshStravaToken(refreshToken: string): Promise<string> {
 }
 
 async function stravaOAuthFlow(): Promise<string> {
+  const CLIENT_ID = process.env.STRAVA_CLIENT_ID;
+  const CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    throw new Error("STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET must be set in .env");
+  }
   console.log("🌐 Opening Strava auth in your browser...");
   const authUrl = `${AUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=activity:read_all`;
   await open(authUrl);
@@ -79,11 +87,11 @@ function waitForCallback(port: number): Promise<string> {
     const server = http.createServer((req, res) => {
       const url = new URL(req.url!, `http://localhost:${port}`);
       const code = url.searchParams.get("code");
-      res.end("Auth complete. You can close this tab.");
-      server.close();
+      res.end("Auth complete. You can close this tab.", () => server.close());
       if (code) resolve(code);
       else reject(new Error("No code in callback"));
     });
+    server.on("error", reject);
     server.listen(port);
   });
 }

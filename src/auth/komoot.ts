@@ -6,8 +6,6 @@ import open from "open";
 import fs from "fs";
 import path from "path";
 
-const CLIENT_ID = process.env.KOMOOT_CLIENT_ID!;
-const CLIENT_SECRET = process.env.KOMOOT_CLIENT_SECRET!;
 const REDIRECT_URI = "http://localhost:3001/callback";
 const TOKEN_URL = "https://api.komoot.de/oauth/token";
 const AUTH_URL = "https://account.komoot.com/oauth/authorize";
@@ -25,6 +23,11 @@ export async function getKomootToken(): Promise<{ accessToken: string; userId: s
 }
 
 async function komootOAuthFlow(): Promise<{ accessToken: string; userId: string }> {
+  const CLIENT_ID = process.env.KOMOOT_CLIENT_ID;
+  const CLIENT_SECRET = process.env.KOMOOT_CLIENT_SECRET;
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    throw new Error("KOMOOT_CLIENT_ID and KOMOOT_CLIENT_SECRET must be set in .env");
+  }
   console.log("🌐 Opening Komoot auth in your browser...");
   const authUrl = `${AUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=tour-upload`;
   await open(authUrl);
@@ -55,11 +58,11 @@ function waitForCallback(port: number): Promise<string> {
     const server = http.createServer((req, res) => {
       const url = new URL(req.url!, `http://localhost:${port}`);
       const code = url.searchParams.get("code");
-      res.end("Auth complete. You can close this tab.");
-      server.close();
+      res.end("Auth complete. You can close this tab.", () => server.close());
       if (code) resolve(code);
       else reject(new Error("No code in callback"));
     });
+    server.on("error", reject);
     server.listen(port);
   });
 }
