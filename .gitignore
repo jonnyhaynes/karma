@@ -1,0 +1,5 @@
+.worktrees/
+.env
+synced.json
+node_modules/
+dist/
