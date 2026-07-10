@@ -1,0 +1,4 @@
+{
+  "pitch": "Syncs cycling activities between Strava and Komoot.",
+  "challenge": "Syncing Strava and Komoot across two OAuth flows and rate limits, converting activity streams to GPX with atomic, resumable state."
+}
